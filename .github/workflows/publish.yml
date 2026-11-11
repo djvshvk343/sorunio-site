@@ -52,7 +52,7 @@ jobs:
               if page.parent == site / "hidequick":
                   html = html.replace("https://djvshvk343.github.io/hidequick-support", base + "hidequick")
                   slug = "" if page.name == "index.html" else page.name
-                  html = html.replace("</head>", f'<link rel="canonical" href="{base}hidequick/{slug}"></head>', 1)
+                  html = html.replace("<title>", f'<link rel="canonical" href="{base}hidequick/{slug}"><title>', 1)
               page.write_text(html)
           
           home = site / "index.html"
