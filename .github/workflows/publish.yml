@@ -1,0 +1,83 @@
+name: Publish SORUNIO
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Get PhotoSSD website
+        uses: actions/checkout@v6
+        with:
+          repository: djvshvk343/photossd-support
+          ref: 18f15e064fc1f1a76e157d8f4ea9d0476f4aa109
+          path: photossd-support
+          persist-credentials: false
+      - name: Get HideQuick website
+        uses: actions/checkout@v6
+        with:
+          repository: djvshvk343/hidequick-support
+          ref: 03d08a00d98ffaf4d08bcf430019ae7408fc79fe
+          path: hidequick-support
+          persist-credentials: false
+      - name: Assemble the website
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from shutil import copytree, ignore_patterns
+          import re
+          import xml.etree.ElementTree as ET
+          
+          base = "https://www.sorunio.com/"
+          old = "https://djvshvk343.github.io/photossd-support/"
+          site = Path("_site")
+          copytree("photossd-support", site, ignore=ignore_patterns(".git", "README.md"))
+          copytree("hidequick-support", site / "hidequick", ignore=ignore_patterns(".git", ".nojekyll"))
+          
+          for page in site.rglob("*.html"):
+              html = page.read_text()
+              html = html.replace(old, base)
+              html = html.replace("/photossd-support/", "/")
+              if page.parent == site / "hidequick":
+                  html = html.replace("https://djvshvk343.github.io/hidequick-support", base + "hidequick")
+                  slug = "" if page.name == "index.html" else page.name
+                  html = html.replace("</head>", f'<link rel="canonical" href="{base}hidequick/{slug}"></head>', 1)
+              page.write_text(html)
+          
+          home = site / "index.html"
+          html = home.read_text()
+          html = html.replace("<title>SORUNIO | PhotoSSD External SSD Photo Viewer</title>", "<title>SORUNIO | Independent Apps</title>")
+          html = html.replace("Independent apps for the devices you already use. Meet PhotoSSD: a way to browse your Mac Photos library from an external SSD on iPhone and iPad.", "Browse your photo library from an external SSD with PhotoSSD, and hide sensitive details in photos and PDFs with HideQuick.")
+          html = html.replace("App collection / 01", "App collection")
+          card = '<article class="app-card"><div><h3>HideQuick</h3><p>Hide sensitive information in photos and PDFs on your iPhone before sharing.</p></div><a class="button blue" href="hidequick/">Explore HideQuick →</a></article>'
+          assert '</article></section>' in html
+          home.write_text(html.replace('</article></section>', '</article>' + card + '</section>', 1).replace('© 2026 PhotoSSD', '© 2026 SORUNIO'))
+          
+          robots = site / "robots.txt"
+          robots.write_text(robots.read_text().replace(old, base))
+          sitemap = site / "sitemap.xml"
+          xml = sitemap.read_text().replace(old, base)
+          urls = ["hidequick/" + ("" if p.name == "index.html" else p.name) for p in sorted((site / "hidequick").glob("*.html"))]
+          urls += ["", "support.html", "privacy.html"]
+          existing = {node.text for node in ET.fromstring(xml).iter("{http://www.sitemaps.org/schemas/sitemap/0.9}loc")}
+          entries = "".join(f"<url><loc>{base}{url}</loc></url>" for url in urls if base + url not in existing)
+          sitemap.write_text(xml.replace("</urlset>", entries + "</urlset>"))
+          PY
+      - name: Upload the website
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Deploy GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
