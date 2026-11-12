@@ -47,6 +47,7 @@ jobs:
           
           for page in site.rglob("*.html"):
               html = page.read_text()
+              html = html.replace("developer.inquiry.5724@gmail.com", "support@sorunio.com")
               html = html.replace(old, base)
               html = html.replace("/photossd-support/", "/")
               if page.parent == site / "hidequick":
