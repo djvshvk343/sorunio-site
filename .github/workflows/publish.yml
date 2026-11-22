@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: djvshvk343/photossd-support
-          ref: 18f15e064fc1f1a76e157d8f4ea9d0476f4aa109
+          ref: d918aa00454456b2b466130bbcd4e83ac10b4d7e
           path: photossd-support
           persist-credentials: false
       - name: Assemble the website
